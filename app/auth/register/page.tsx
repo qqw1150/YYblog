@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, Github, Chrome, Loader2 } from "lucide-react";
+import { registerUser } from "@/lib/supabase/db/auth";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const router = useRouter();
   // 状态管理
   const [formData, setFormData] = useState({
     email: "",
@@ -44,21 +47,29 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // TODO: 实现注册逻辑
-      console.log("注册请求:", formData);
-      // 模拟注册延迟
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("开始注册流程...");
+      // 调用注册函数
+      const { user, error } = await registerUser(formData.email, formData.password);
       
-      // 这里应该调用实际的注册API
-      // const { data, error } = await supabaseClient.auth.signUp({
-      //   email: formData.email,
-      //   password: formData.password,
-      // });
+      console.log("注册响应:", { user, error });
       
-      // if (error) throw error;
-      // 注册成功后重定向到登录页
-      // window.location.href = "/auth/login";
+      if (error) {
+        console.error("注册错误:", error);
+        throw error;
+      }
+
+      if (!user) {
+        console.error("注册成功但用户对象为空");
+        throw new Error("注册失败：未获取到用户信息");
+      }
+
+      console.log("注册成功，准备跳转...");
+      // 注册成功，跳转到callback页面
+      const callbackUrl = `/auth/callback?email=${encodeURIComponent(formData.email)}`;
+      console.log("跳转URL:", callbackUrl);
+      router.push(callbackUrl);
     } catch (err: any) {
+      console.error("注册过程出错:", err);
       setError(err.message || "注册失败，请重试");
     } finally {
       setLoading(false);

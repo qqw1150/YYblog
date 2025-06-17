@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, Github, Chrome, Loader2 } from "lucide-react";
+import { loginUser } from "@/lib/supabase/db/auth";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   // 状态管理
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,20 +22,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // TODO: 实现登录逻辑
-      console.log("登录请求:", { email, password });
-      // 模拟登录延迟
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 调用登录函数
+      const { user, error } = await loginUser(email, password);
       
-      // 这里应该调用实际的登录API
-      // const { data, error } = await supabaseClient.auth.signInWithPassword({
-      //   email,
-      //   password,
-      // });
-      
-      // if (error) throw error;
-      // 登录成功后重定向
-      // window.location.href = "/";
+      if (error) {
+        // 检查是否是邮箱未验证错误
+        if (error.message.includes("Email not confirmed")) {
+          setError("请先验证您的邮箱，我们已发送验证邮件到您的邮箱");
+          return;
+        }
+        throw error;
+      }
+
+      if (user) {
+        // 检查邮箱是否已验证
+        if (!user.email_confirmed_at) {
+          setError("请先验证您的邮箱，我们已发送验证邮件到您的邮箱");
+          return;
+        }
+        // 登录成功，重定向到首页
+        router.push("/");
+      }
     } catch (err: any) {
       setError(err.message || "登录失败，请重试");
     } finally {
