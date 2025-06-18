@@ -56,8 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         
         // 获取完整用户信息
         const { data: userInfo, error: userError } = await getCompleteUserInfo(
-          session.user.id, 
-          session.user.email || ''
+          session.user.id
         );
 
         if (userError) {
@@ -105,8 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           
           // 获取完整用户信息
           const { data: userInfo, error: userError } = await getCompleteUserInfo(
-            session.user.id, 
-            session.user.email || ''
+            session.user.id
           );
 
           if (userError) {
@@ -147,8 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // 登录成功，获取完整用户信息
         console.log("✅ 登录成功，获取用户信息...");
         const { data: userInfo, error: userError } = await getCompleteUserInfo(
-          user.id, 
-          user.email || ''
+          user.id
         );
 
         if (userError) {
