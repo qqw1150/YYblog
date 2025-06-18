@@ -22,7 +22,9 @@ module.exports = {
     },
   },
   // 插件配置
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
   // 暗黑模式配置
   darkMode: 'media',
 }

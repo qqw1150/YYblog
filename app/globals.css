@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+/* 
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -18,4 +18,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, sans-serif;
+} */
+
+/* 解决页面高度和背景问题 */
+html, body {
+  min-height: 100%;
+}
+
+body {
+  background: linear-gradient(to bottom, rgb(249 250 251), rgb(241 245 249), rgb(255 255 255));
 }
