@@ -284,7 +284,16 @@ export default function PostsManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {post.categories?.name || '未分类'}
+                      {(() => {
+                        // 处理不同的数据结构形式
+                        if (post.categories?.name) {
+                          return post.categories.name;
+                        } else if (typeof post.categories === 'object' && post.categories !== null) {
+                          // 日志输出查看实际结构
+                          console.log('分类数据结构:', post.categories);
+                        }
+                        return '未分类';
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
