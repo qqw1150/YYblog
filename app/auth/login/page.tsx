@@ -3,15 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, Github, Chrome, Loader2 } from "lucide-react";
-import { loginUser } from "@/lib/supabase/db/auth";
+import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, loading } = useAuthStore();
+  
   // 状态管理
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -19,34 +20,31 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
-      // 调用登录函数
-      const { user, error } = await loginUser(email, password);
+      console.log("🔍 开始登录流程...");
       
-      if (error) {
-        // 检查是否是邮箱未验证错误
-        if (error.message.includes("Email not confirmed")) {
-          setError("请先验证您的邮箱，我们已发送验证邮件到您的邮箱");
-          return;
-        }
-        throw error;
-      }
-
+      // 使用 Zustand 的登录方法
+      await login(email, password);
+      
+      // 登录成功后，获取用户角色并跳转
+      const { user } = useAuthStore.getState();
+      
       if (user) {
-        // 检查邮箱是否已验证
-        if (!user.email_confirmed_at) {
-          setError("请先验证您的邮箱，我们已发送验证邮件到您的邮箱");
-          return;
+        console.log("👤 用户角色:", user.role);
+        
+        // 根据角色跳转
+        if (user.role === 'admin') {
+          console.log("🚀 管理员用户，跳转到管理面板");
+          router.push('/admin');
+        } else {
+          console.log("🏠 普通用户，跳转到首页");
+          router.push('/');
         }
-        // 登录成功，重定向到首页
-        router.push("/");
       }
     } catch (err: any) {
+      console.error("❌ 登录失败:", err);
       setError(err.message || "登录失败，请重试");
-    } finally {
-      setLoading(false);
     }
   };
 
