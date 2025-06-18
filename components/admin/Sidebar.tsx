@@ -69,10 +69,9 @@ export default function Sidebar({ isSidebarOpen }: SidebarProps) {
 
       {/* 侧边栏 */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition duration-300 ease-in-out md:translate-x-0 md:relative md:flex-shrink-0 ${
+        className={`fixed left-0 z-40 mt-16 w-64 transform transition duration-300 ease-in-out md:translate-x-0 md:relative md:flex-shrink-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ top: '4rem' }}
       >
         <div className="h-[calc(100vh-4rem)] flex flex-col bg-white shadow-lg">
           <div className="flex-1 flex flex-col overflow-y-auto">
