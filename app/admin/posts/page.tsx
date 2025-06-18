@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { getPosts, deletePost, Post } from '@/lib/supabase/db';
+import { Category } from '@/lib/supabase/db/categories';
 import { useAuthStore } from '@/stores/authStore';
 
 // 标签接口
@@ -27,10 +28,6 @@ interface TagData {
 // 文章数据接口，扩展基础的Post接口
 interface PostWithTags extends Post {
   tags?: TagData[];
-  category?: {
-    name: string;
-    slug: string;
-  } | null;
 }
 
 /**
@@ -287,7 +284,7 @@ export default function PostsManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {post.category?.name || '未分类'}
+                      {post.categories?.name || '未分类'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

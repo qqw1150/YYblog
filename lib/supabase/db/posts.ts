@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { PostgrestError } from '@supabase/supabase-js';
+import { Category } from './categories';
 
 /**
  * 文章接口定义
@@ -21,6 +22,8 @@ export interface Post {
   is_top: boolean; // 是否置顶
   created_at: string;
   updated_at: string;
+  // 关联数据
+  categories?: Category | null; // 关联的分类信息
 }
 
 /**
@@ -136,7 +139,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       // 使用联表查询获取带有特定标签的文章
       let query = supabase
         .from('post_tags')
-        .select('posts!inner(*)')
+        .select('posts!inner(*, categories(id, name))')
         .eq('tag_id', tagId);
       
       // 应用额外的过滤条件
@@ -179,7 +182,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       // 常规文章查询
       let query = supabase
         .from('posts')
-        .select('*', { count: 'exact' });
+        .select('*, categories(id, name)', { count: 'exact' });
       
       // 应用过滤条件
       if (status !== 'all') {
@@ -208,6 +211,9 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         .range(from, to);
       
       console.log(`📊 查询结果: 获取到 ${data?.length} 篇文章，总数: ${count}`);
+      if (data && data.length > 0) {
+        console.log('🔍 查询结果: 第一篇文章数据结构:', JSON.stringify(data[0], null, 2));
+      }
       
       if (error) {
         console.error('❌ 获取文章列表失败:', error);
@@ -239,7 +245,7 @@ export async function getPostById(id: string): Promise<{
     
     const { data, error } = await supabase
       .from('posts')
-      .select('*')
+      .select('*, categories(id, name)')
       .eq('id', id)
       .single();
     
@@ -274,7 +280,7 @@ export async function getPostWithTags(id: string): Promise<{
     // 获取文章信息
     const { data: post, error: postError } = await supabase
       .from('posts')
-      .select('*')
+      .select('*, categories(id, name)')
       .eq('id', id)
       .single();
     
