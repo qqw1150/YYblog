@@ -4,6 +4,38 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
 import { getPostWithTags } from '@/lib/supabase/db/posts';
+import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+
+// 定义文章详情页面的数据类型
+interface PostWithTags {
+  id: string;
+  title: string;
+  content: any;
+  excerpt: string | null;
+  featured_image: string | null;
+  status: string;
+  published_at: string;
+  seo_keywords: string | null;
+  seo_description: string | null;
+  allow_comment: boolean;
+  is_top: boolean;
+  author: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  };
+  category: {
+    id: string;
+    name: string;
+  };
+  tags: Array<{
+    id: string;
+    name: string;
+  }>;
+  views?: number;
+  likes?: number;
+  comments_count?: number;
+}
 
 export default async function BlogPostPage({ params }: { params: { id: string } }) {
   // 这里的id来自于路由参数
@@ -33,6 +65,13 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
     );
   }
 
+  // 类型断言
+  const typedPost = post as PostWithTags;
+
+  // 确保作者信息有默认值
+  const authorName = typedPost.author.username || '匿名用户';
+  const authorAvatar = typedPost.author.avatar_url || getDefaultAvatarUrl();
+
   return (
     <div className="min-h-screen relative bg-gray-50">
       {/* 文章头部背景 */}
@@ -48,39 +87,37 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
             </svg>
             返回文章列表
           </Link>
-          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 drop-shadow-sm leading-tight">{post.title}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 drop-shadow-sm leading-tight">{typedPost.title}</h1>
           
           {/* 文章元信息 */}
           <div className="flex flex-col sm:flex-row sm:items-center text-gray-600 mb-8 gap-3 sm:gap-4 bg-white/90 p-4 rounded-xl shadow-md backdrop-blur-sm border border-gray-300">
             <div className="flex items-center">
-              {post.author.avatar && (
-                <div className="relative mr-3">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-30"></div>
-                  <Image 
-                    src={post.author.avatar} 
-                    alt={post.author.name}
-                    width={44} 
-                    height={44} 
-                    className="rounded-full border-2 border-white shadow-md relative"
-                  />
-                </div>
-              )}
-              <span className="font-medium">{post.author.name}</span>
+              <div className="relative mr-3">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-30"></div>
+                <Image 
+                  src={authorAvatar} 
+                  alt={authorName}
+                  width={44} 
+                  height={44} 
+                  className="rounded-full border-2 border-white shadow-md relative"
+                />
+              </div>
+              <span className="font-medium">{authorName}</span>
             </div>
             <span className="hidden sm:inline text-gray-400">•</span>
-            <time dateTime={post.published_at} className="flex items-center text-gray-500">
+            <time dateTime={typedPost.published_at} className="flex items-center text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {formatDateTime(post.published_at)}
+              {formatDateTime(typedPost.published_at)}
             </time>
             <span className="hidden sm:inline text-gray-400">•</span>
-            <span className="bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white px-3 py-1 rounded-md text-sm shadow-md border border-white/30">{post.category.name}</span>
+            <span className="bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white px-3 py-1 rounded-md text-sm shadow-md border border-white/30">{typedPost.category.name}</span>
           </div>
           
           {/* 标签 */}
           <div className="flex flex-wrap gap-2 mb-8">
-            {post.tags.map(tag => (
+            {typedPost.tags.map(tag => (
               <Link 
                 key={tag.id} 
                 href={`/blog/tag/${tag.id}`}
@@ -95,11 +132,11 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
       
       <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-20">
         {/* 特色图片 */}
-        {post.featured_image && (
+        {typedPost.featured_image && (
           <div className="mb-8 relative h-[400px] w-full rounded-xl overflow-hidden shadow-xl transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl border border-gray-300">
             <Image 
-              src={post.featured_image} 
-              alt={post.title}
+              src={typedPost.featured_image} 
+              alt={typedPost.title}
               fill
               className="object-cover"
               priority
@@ -128,7 +165,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
             prose-strong:text-indigo-700 prose-strong:font-semibold
             prose-ul:marker:text-indigo-600 prose-li:my-2
           ">
-            <MarkdownRenderer content={post.content} />
+            <MarkdownRenderer content={typedPost.content} />
           </article>
         </div>
         
@@ -142,19 +179,19 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  <span>{post.views} 阅读</span>
+                  <span>{typedPost.views || 0} 阅读</span>
                 </div>
                 <div className="flex items-center text-gray-700 group hover:text-rose-600 transition-all">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-400 group-hover:text-rose-500 mr-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span>{post.likes} 赞</span>
+                  <span>{typedPost.likes || 0} 赞</span>
                 </div>
                 <div className="flex items-center text-gray-700 group hover:text-indigo-600 transition-all">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400 group-hover:text-indigo-500 mr-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
-                  <span>{post.comments_count} 评论</span>
+                  <span>{typedPost.comments_count || 0} 评论</span>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -178,20 +215,18 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
         {/* 作者信息 */}
         <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl p-8 mb-12 shadow-xl border border-indigo-300 transform transition-all duration-300 hover:shadow-2xl">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            {post.author.avatar && (
-              <div className="relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-30"></div>
-                <Image 
-                  src={post.author.avatar} 
-                  alt={post.author.name}
-                  width={90} 
-                  height={90} 
-                  className="rounded-full relative border-4 border-white shadow-lg"
-                />
-              </div>
-            )}
+            <div className="relative">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-30"></div>
+              <Image 
+                src={authorAvatar} 
+                alt={authorName}
+                width={90} 
+                height={90} 
+                className="rounded-full relative border-4 border-white shadow-lg"
+              />
+            </div>
             <div className="text-center sm:text-left">
-              <h3 className="font-bold text-2xl text-gray-900 mb-2">{post.author.name}</h3>
+              <h3 className="font-bold text-2xl text-gray-900 mb-2">{authorName}</h3>
               <p className="text-gray-700 mb-4 max-w-md">资深前端开发工程师，热衷于分享Web开发技术和最佳实践。</p>
               <button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-white/30">
                 关注作者

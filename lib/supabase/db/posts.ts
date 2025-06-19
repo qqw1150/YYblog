@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client';
 import { PostgrestError } from '@supabase/supabase-js';
 import { Category } from './categories';
+import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
 
 /**
  * 文章接口定义
@@ -275,35 +276,74 @@ export async function getPostWithTags(id: string): Promise<{
   error: PostgrestError | null;
 }> {
   try {
+    console.log(`🔍 获取带标签的文章详情，ID: ${id}`);
+    
     // 联表查询作者、分类、标签
     const { data: post, error } = await supabase
       .from('posts')
       .select(`
         id, title, content, excerpt, featured_image, status, published_at,
         seo_keywords, seo_description, allow_comment, is_top,
-        author:users(id, username, avatar_url),
-        category:categories(id, name),
+        users!posts_author_id_fkey(id, username, avatar_url, email),
+        categories!posts_category_id_fkey(id, name),
         post_tags(tags(id, name))
       `)
       .eq('id', id)
       .single();
 
     if (error) {
+      console.error(`❌ 获取带标签的文章详情失败，ID: ${id}`, error);
       return { data: null, error };
+    }
+
+    if (!post) {
+      console.log(`❌ 未找到文章，ID: ${id}`);
+      return { data: null, error: null };
     }
 
     // 扁平化标签数组
     const tags = post?.post_tags?.map((pt: any) => pt.tags) ?? [];
 
-    // 返回结构与前端mock一致
-    return {
-      data: {
-        ...post,
-        tags,
+    // 处理作者信息，确保结构与前端期望一致
+    // Supabase 返回的关联数据可能是数组，取第一个元素
+    const authorData = Array.isArray(post.users) ? post.users[0] : post.users;
+    const categoryData = Array.isArray(post.categories) ? post.categories[0] : post.categories;
+
+    // 使用工具函数处理用户名和头像
+    const username = getDisplayUsername(authorData?.username, authorData?.email);
+    const avatarUrl = authorData?.avatar_url || getDefaultAvatarUrl(authorData?.email, username);
+
+    const processedPost = {
+      ...post,
+      author: {
+        id: authorData?.id || '',
+        username: username,
+        avatar_url: avatarUrl
       },
+      category: {
+        id: categoryData?.id || '',
+        name: categoryData?.name || '未分类'
+      },
+      tags,
+      // 添加默认的统计信息（如果数据库中没有这些字段）
+      views: 0,
+      likes: 0,
+      comments_count: 0
+    };
+
+    console.log(`✅ 成功获取带标签的文章详情，ID: ${id}`, {
+      title: processedPost.title,
+      author: processedPost.author.username,
+      category: processedPost.category.name,
+      tagsCount: processedPost.tags.length
+    });
+
+    return {
+      data: processedPost,
       error: null
     };
   } catch (error) {
+    console.error(`❌ 获取带标签的文章详情异常，ID: ${id}`, error);
     return {
       data: null,
       error: error as PostgrestError
