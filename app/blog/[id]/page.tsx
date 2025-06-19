@@ -5,11 +5,6 @@ import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
 import { getPostWithTags } from '@/lib/supabase/db/posts';
 
-// Markdown内容预处理，去除每行前4个空格或tab，防止被误判为代码块
-function cleanMarkdown(md: string) {
-  return md.replace(/^( {4}|\t)/gm, '');
-}
-
 export default async function BlogPostPage({ params }: { params: { id: string } }) {
   // 这里的id来自于路由参数
   const { id } = params;
@@ -130,7 +125,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
             prose-strong:text-indigo-700 prose-strong:font-semibold
             prose-ul:marker:text-indigo-600 prose-li:my-2
           ">
-            <MarkdownRenderer content={cleanMarkdown(post.content)} />
+            <MarkdownRenderer content={post.content} />
           </article>
         </div>
         

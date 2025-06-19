@@ -28,14 +28,19 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   // 预处理内容，将反引号包裹的文本转换为斜体格式
   const processedContent = React.useMemo(() => {
-    if (!convertBackticksToEmphasis) return content;
+    let processed = content;
+
+    // 处理反引号转换为斜体格式
+    if (convertBackticksToEmphasis) {
+      // 将单反引号包裹的文本转换为斜体格式（*文本*）
+      // 使用正则表达式匹配单反引号包裹的文本，但不匹配代码块(```)
+      processed = processed.replace(
+        /(?<!`)`([^`\n]+)`(?!`)/g, 
+        '*$1*' // 转换为斜体格式
+      );
+    }
     
-    // 将单反引号包裹的文本转换为斜体格式（*文本*）
-    // 使用正则表达式匹配单反引号包裹的文本，但不匹配代码块(```)
-    return content.replace(
-      /(?<!`)`([^`\n]+)`(?!`)/g, 
-      '*$1*' // 转换为斜体格式
-    );
+    return processed;
   }, [content, convertBackticksToEmphasis]);
 
   return (
