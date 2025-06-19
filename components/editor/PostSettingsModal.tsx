@@ -85,13 +85,20 @@ export default function PostSettingsModal({
   // 处理初始数据（编辑模式）
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        // 确保标题和内容优先使用传入的值
-        title: title || initialData.title || prev.title,
-        content: content || initialData.content || prev.content,
-      }));
+      console.log('📋 PostSettingsModal 接收到初始数据:', initialData);
+      console.log('📋 状态字段:', initialData.status);
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          ...initialData,
+          // 确保标题和内容优先使用传入的值
+          title: title || initialData.title || prev.title,
+          content: content || initialData.content || prev.content,
+        };
+        console.log('📋 PostSettingsModal 更新后的表单数据:', newData);
+        console.log('📋 更新后的状态字段:', newData.status);
+        return newData;
+      });
     }
   }, [initialData, title, content]);
 
@@ -153,6 +160,8 @@ export default function PostSettingsModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('📝 PostSettingsModal 表单提交，当前数据:', formData);
+    
     // 表单验证
     if (!formData.title.trim()) {
       alert('请输入文章标题');
@@ -175,6 +184,7 @@ export default function PostSettingsModal({
       formData.excerpt = excerpt + (excerpt.length === 150 ? '...' : '');
     }
     
+    console.log('📤 PostSettingsModal 提交最终数据:', formData);
     onSubmit(formData);
   };
 

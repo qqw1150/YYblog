@@ -279,7 +279,8 @@ export async function getPostWithTags(id: string): Promise<{
     const { data: post, error } = await supabase
       .from('posts')
       .select(`
-        id, title, content, excerpt, featured_image, published_at,
+        id, title, content, excerpt, featured_image, status, published_at,
+        seo_keywords, seo_description, allow_comment, is_top,
         author:users(id, username, avatar_url),
         category:categories(id, name),
         post_tags(tags(id, name))

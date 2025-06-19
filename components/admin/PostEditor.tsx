@@ -70,6 +70,15 @@ export default function PostEditor({ postId }: PostEditorProps) {
         throw new Error('文章不存在');
       }
 
+      console.log('📋 加载到的文章数据结构:', {
+        title: post.title,
+        category: post.category,
+        status: post.status,
+        tags: post.tags,
+        allow_comment: post.allow_comment,
+        is_top: post.is_top
+      });
+
       // 回显数据到表单
       setTitle(post.title);
       setContent(post.content);
@@ -123,6 +132,13 @@ export default function PostEditor({ postId }: PostEditorProps) {
       setError('用户未登录，请重新登录');
       return;
     }
+
+    console.log('📝 开始处理文章提交:', {
+      title: postData.title,
+      tags: postData.tags,
+      status: postData.status,
+      isEditMode
+    });
 
     setIsPublishing(true);
     setError(null);
@@ -216,7 +232,12 @@ export default function PostEditor({ postId }: PostEditorProps) {
   const handleUpdatePost = async (postData: PostSubmitData) => {
     if (!postId) return;
 
-    console.log('📝 开始更新文章:', postData.title);
+    console.log('📝 开始更新文章:', {
+      postId,
+      title: postData.title,
+      tags: postData.tags,
+      status: postData.status
+    });
 
     // 1. 准备更新数据
     const updateData: PostUpdate = {
@@ -231,6 +252,8 @@ export default function PostEditor({ postId }: PostEditorProps) {
       allow_comment: postData.allowComment,
       is_top: postData.isTop,
     };
+
+    console.log('📋 文章更新数据:', updateData);
 
     // 2. 更新文章
     const { data: updatedPost, error: updateError } = await updatePost(postId, updateData);
@@ -247,6 +270,7 @@ export default function PostEditor({ postId }: PostEditorProps) {
     console.log('✅ 文章更新成功，ID:', updatedPost.id);
 
     // 3. 处理标签
+    console.log('🏷️ 开始处理标签更新，标签数量:', postData.tags.length);
     await handlePostTags(postId, postData.tags);
   };
 
@@ -254,6 +278,8 @@ export default function PostEditor({ postId }: PostEditorProps) {
    * 处理文章标签
    */
   const handlePostTags = async (postId: string, tags: string[]) => {
+    console.log('🏷️ 处理文章标签，文章ID:', postId, '标签:', tags);
+    
     if (tags.length > 0) {
       // 创建标签（如果不存在）
       const { data: createdTags, error: tagsError } = await createTagsFromNames(tags);
@@ -272,6 +298,17 @@ export default function PostEditor({ postId }: PostEditorProps) {
         } else {
           console.log('✅ 文章标签设置成功');
         }
+      }
+    } else {
+      // 标签数组为空，清空文章的所有标签
+      console.log('🗑️ 清空文章标签');
+      const { error: setTagsError } = await setPostTags(postId, []);
+      
+      if (setTagsError) {
+        console.error('❌ 清空文章标签失败:', setTagsError);
+        // 标签清空失败不影响文章发布，只记录错误
+      } else {
+        console.log('✅ 文章标签清空成功');
       }
     }
   };
@@ -356,7 +393,7 @@ export default function PostEditor({ postId }: PostEditorProps) {
           initialData={postData ? {
             title: postData.title,
             content: postData.content,
-            categoryId: postData.category_id || '',
+            categoryId: postData.category?.id || '',
             tags: postData.tags?.map((tag: any) => tag.name) || [],
             allowComment: postData.allow_comment || true,
             excerpt: postData.excerpt || '',

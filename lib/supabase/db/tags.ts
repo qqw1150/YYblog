@@ -238,39 +238,54 @@ export async function createTagsFromNames(tagNames: string[]): Promise<{
       return { data: [], error: null };
     }
     
-    // 为每个标签名创建一个对象，自动生成slug
-    const tagsToCreate = validTagNames.map(name => ({
-      name,
-      slug: name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
-    }));
+    console.log('🏷️ 开始处理标签:', validTagNames);
     
-    // 批量插入标签
-    const { data, error } = await supabase
-      .from('tags')
-      .upsert(tagsToCreate, { 
-        onConflict: 'name', // 如果标签名已存在则不重复创建
-        ignoreDuplicates: true 
-      })
-      .select();
-    
-    if (error) {
-      console.error('❌ 批量创建标签失败:', error);
-      return { data: null, error };
-    }
-    
-    // 获取所有创建的标签（包括已存在的）
-    const { data: allMatchingTags, error: fetchError } = await supabase
+    // 1. 先查询已存在的标签
+    const { data: existingTags, error: fetchError } = await supabase
       .from('tags')
       .select('*')
       .in('name', validTagNames);
     
     if (fetchError) {
-      console.error('❌ 获取创建的标签失败:', fetchError);
-      return { data, error: null }; // 返回成功创建的部分
+      console.error('❌ 查询已存在标签失败:', fetchError);
+      return { data: null, error: fetchError };
     }
     
-    console.log(`✅ 成功处理 ${allMatchingTags.length} 个标签`);
-    return { data: allMatchingTags, error: null };
+    // 2. 找出需要创建的新标签
+    const existingTagNames = existingTags?.map(tag => tag.name) || [];
+    const newTagNames = validTagNames.filter(name => !existingTagNames.includes(name));
+    
+    console.log('📋 已存在标签:', existingTagNames);
+    console.log('🆕 需要创建的新标签:', newTagNames);
+    
+    let newlyCreatedTags: Tag[] = [];
+    
+    // 3. 创建新标签
+    if (newTagNames.length > 0) {
+      const tagsToCreate = newTagNames.map(name => ({
+        name,
+        slug: name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
+      }));
+      
+      const { data: createdTags, error: createError } = await supabase
+        .from('tags')
+        .insert(tagsToCreate)
+        .select();
+      
+      if (createError) {
+        console.error('❌ 创建新标签失败:', createError);
+        return { data: null, error: createError };
+      }
+      
+      newlyCreatedTags = createdTags || [];
+      console.log('✅ 成功创建新标签:', newlyCreatedTags.map(tag => tag.name));
+    }
+    
+    // 4. 合并所有标签（已存在的 + 新创建的）
+    const allTags = [...(existingTags || []), ...newlyCreatedTags];
+    
+    console.log(`✅ 成功处理 ${allTags.length} 个标签`);
+    return { data: allTags, error: null };
   } catch (error) {
     console.error('❌ 批量创建标签异常:', error);
     return { 

@@ -12,6 +12,9 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
   // 调用真实API获取文章详情（带标签）
   const { data: post, error } = await getPostWithTags(id);
 
+  // 打印post
+  console.log('post:', post);
+
   // 错误处理
   if (error) {
     return (

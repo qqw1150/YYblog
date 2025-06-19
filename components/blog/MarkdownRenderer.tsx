@@ -47,13 +47,13 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <div className={`prose prose-lg max-w-none ${className}
       prose-h1:text-indigo-700 prose-h1:font-extrabold prose-h1:tracking-tight prose-h1:mb-6 prose-h1:mt-10
       prose-h2:text-purple-700 prose-h2:font-bold prose-h2:border-b prose-h2:border-purple-200 prose-h2:pb-2 prose-h2:mb-5 prose-h2:mt-8
-      prose-h3:text-rose-700 prose-h3:font-semibold prose-h3:mb-4 prose-h3:mt-6
+      prose-h3:text-red-700 prose-h3:font-semibold prose-h3:mb-4 prose-h3:mt-6
       prose-h4:text-amber-700 prose-h4:font-semibold prose-h4:mb-3 prose-h4:mt-5
       prose-p:text-gray-900 prose-p:leading-relaxed prose-p:mb-4
       prose-ul:marker:text-indigo-500 prose-ul:pl-6 prose-li:text-gray-800 prose-li:mb-2
       prose-ol:marker:text-purple-500 prose-ol:pl-6 prose-li:mb-2
       prose-blockquote:border-l-4 prose-blockquote:border-amber-400 prose-blockquote:bg-amber-50 prose-blockquote:text-amber-900 prose-blockquote:italic prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:my-6
-      prose-strong:text-rose-700 prose-strong:font-semibold
+      prose-strong:text-blue-700 prose-strong:font-semibold
       prose-em:text-indigo-600 prose-em:not-italic
       prose-a:text-blue-600 prose-a:underline hover:prose-a:text-blue-800 prose-a:font-medium
       prose-code:text-pink-600 prose-code:bg-pink-50 prose-code:px-2 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
