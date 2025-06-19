@@ -177,7 +177,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       const posts = ((taggedPostsData as unknown) as PostTagResult[]).map(item => item.posts);
       console.log(`📊 查询结果: 获取到 ${posts.length} 篇标签文章`);
       
-      return { data: posts, count, error: null };
+      return { data: posts, count, error };
     } else {
       // 常规文章查询
       let query = supabase
@@ -266,54 +266,46 @@ export async function getPostById(id: string): Promise<{
 }
 
 /**
- * 获取带标签的文章详情
+ * 获取带标签的文章详情（联表作者、分类、标签，结构与前端mock一致）
  * @param id 文章ID
- * @returns 文章详情（包含标签）
+ * @returns 文章详情（包含author、category、tags）
  */
 export async function getPostWithTags(id: string): Promise<{
-  data: Post & { tags: any[] } | null;
+  data: any | null;
   error: PostgrestError | null;
 }> {
   try {
-    console.log(`🔍 获取带标签的文章详情，ID: ${id}`);
-    
-    // 获取文章信息
-    const { data: post, error: postError } = await supabase
+    // 联表查询作者、分类、标签
+    const { data: post, error } = await supabase
       .from('posts')
-      .select('*, categories(id, name)')
+      .select(`
+        id, title, content, excerpt, featured_image, published_at,
+        author:users(id, username, avatar_url),
+        category:categories(id, name),
+        post_tags(tags(id, name))
+      `)
       .eq('id', id)
       .single();
-    
-    if (postError) {
-      console.error(`❌ 获取文章详情失败，ID: ${id}`, postError);
-      return { data: null, error: postError };
+
+    if (error) {
+      return { data: null, error };
     }
-    
-    // 获取文章标签
-    const { data: tagsData, error: tagsError } = await supabase
-      .from('post_tags')
-      .select('tags(*)')
-      .eq('post_id', id);
-    
-    if (tagsError) {
-      console.error(`❌ 获取文章标签失败，ID: ${id}`, tagsError);
-      return { data: null, error: tagsError };
-    }
-    
-    // 提取标签信息
-    const tags = tagsData.map(item => item.tags);
-    
-    console.log(`✅ 成功获取带标签的文章详情，ID: ${id}`);
-    
-    return { 
-      data: { ...post, tags }, 
-      error: null 
+
+    // 扁平化标签数组
+    const tags = post?.post_tags?.map((pt: any) => pt.tags) ?? [];
+
+    // 返回结构与前端mock一致
+    return {
+      data: {
+        ...post,
+        tags,
+      },
+      error: null
     };
   } catch (error) {
-    console.error(`❌ 获取带标签的文章详情异常，ID: ${id}`, error);
-    return { 
-      data: null, 
-      error: error as PostgrestError 
+    return {
+      data: null,
+      error: error as PostgrestError
     };
   }
 }

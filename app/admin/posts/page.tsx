@@ -298,7 +298,7 @@ export default function PostsManagement() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <Link 
-                          href={`/blog/${post.slug}`} 
+                          href={`/blog/${post.id}`} 
                           className="text-gray-500 hover:text-gray-700"
                           title="预览"
                         >

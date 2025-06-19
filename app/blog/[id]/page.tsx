@@ -3,111 +3,37 @@ import Image from 'next/image';
 import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
+import { getPostWithTags } from '@/lib/supabase/db/posts';
 
-// 模拟文章数据
-const mockPost = {
-  id: '1',
-  title: '探索现代Web开发：Next.js 与 React 的最佳实践',
-  content: `
-# 探索现代Web开发：Next.js 与 React 的最佳实践
-
-## 引言
-
-在当今快速发展的Web开发领域，选择合适的技术栈对于构建高性能、可维护的应用程序至关重要。Next.js作为一个基于React的全栈框架，提供了许多开箱即用的功能，使开发过程更加流畅和高效。
-
-## Next.js的主要优势
-
-### 1. 服务器端渲染(SSR)与静态站点生成(SSG)
-
-Next.js支持多种渲染方式，包括：
-
-- **服务器端渲染(SSR)**：每次请求时在服务器上渲染页面
-- **静态站点生成(SSG)**：在构建时预渲染页面
-- **增量静态再生(ISR)**：结合了SSG的性能优势和动态内容的新鲜度
-
-这种灵活性使开发者能够根据具体需求选择最合适的渲染策略。
-
-### 2. 文件系统路由
-
-Next.js采用基于文件系统的直观路由机制：
-
-\`\`\`jsx
-// pages/blog/[id].js
-export default function BlogPost({ post }) {
-  return <div>{post.title}</div>
+// Markdown内容预处理，去除每行前4个空格或tab，防止被误判为代码块
+function cleanMarkdown(md: string) {
+  return md.replace(/^( {4}|\t)/gm, '');
 }
 
-export async function getStaticProps({ params }) {
-  // 获取数据
-  return { props: { post } }
-}
-\`\`\`
-
-### 3. API路由
-
-轻松创建API端点：
-
-\`\`\`jsx
-// pages/api/posts.js
-export default function handler(req, res) {
-  res.status(200).json({ posts: [] })
-}
-\`\`\`
-
-## React最佳实践
-
-### 组件设计原则
-
-- **单一职责**：每个组件应专注于解决一个特定问题
-- **可组合性**：设计小型、可重用的组件
-- **状态管理**：适当使用Context API、Redux或其他状态管理解决方案
-
-### 性能优化
-
-- 使用React.memo()避免不必要的重新渲染
-- 实现代码分割减少初始加载时间
-- 懒加载组件和图片
-
-## 结论
-
-Next.js和React的结合为现代Web应用开发提供了强大的基础。通过遵循本文讨论的最佳实践，开发者可以构建出高性能、可维护且用户友好的应用程序。
-
-![开发示意图](https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80)
-
-> "好的代码就像好的笑话，不需要解释。" — Russ Olsen
-
-## 参考资料
-
-1. [Next.js官方文档](https://nextjs.org/docs)
-2. [React官方文档](https://reactjs.org/docs)
-3. [Web开发最佳实践指南](https://example.com)
-  `,
-  author: {
-    id: '101',
-    name: '张三',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=120&q=80'
-  },
-  category: {
-    id: '201',
-    name: '前端开发'
-  },
-  tags: [
-    { id: '301', name: 'React' },
-    { id: '302', name: 'Next.js' },
-    { id: '303', name: '开发最佳实践' }
-  ],
-  published_at: '2023-08-15T08:30:00Z',
-  featured_image: 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80',
-  views: 1234,
-  likes: 56,
-  comments_count: 23
-};
-
-export default function BlogPostPage({ params }: { params: { id: string } }) {
+export default async function BlogPostPage({ params }: { params: { id: string } }) {
   // 这里的id来自于路由参数
   const { id } = params;
-  // 实际使用时，这里会根据id获取文章数据
-  const post = mockPost;
+
+  // 调用真实API获取文章详情（带标签）
+  const { data: post, error } = await getPostWithTags(id);
+
+  // 错误处理
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-rose-600 text-xl font-bold">
+        加载文章失败：{error.message}
+      </div>
+    );
+  }
+
+  // 无数据处理
+  if (!post) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500 text-xl font-bold">
+        未找到该文章
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative bg-gray-50">
@@ -204,7 +130,7 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
             prose-strong:text-indigo-700 prose-strong:font-semibold
             prose-ul:marker:text-indigo-600 prose-li:my-2
           ">
-            <MarkdownRenderer content={post.content} />
+            <MarkdownRenderer content={cleanMarkdown(post.content)} />
           </article>
         </div>
         
