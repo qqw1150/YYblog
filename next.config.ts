@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
-    domains: ['images.unsplash.com','picsum.photos','www.gravatar.com','ui-avatars.com'],
+    domains: ['images.unsplash.com','picsum.photos','www.gravatar.com','ui-avatars.com','source.unsplash.com'],
     remotePatterns: [
       {
         protocol: 'https',

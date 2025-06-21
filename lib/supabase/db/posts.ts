@@ -93,6 +93,7 @@ export interface PostQueryParams {
   status?: 'published' | 'draft' | 'all';
   authorId?: string;
   categoryId?: string; // UUID类型
+  categorySlug?: string; // 新增：通过分类slug查询
   searchTerm?: string;
   orderBy?: string;
   orderDirection?: 'asc' | 'desc';
@@ -129,6 +130,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       status = 'all',
       authorId,
       categoryId,
+      categorySlug, // 新增：分类slug参数
       tagId,
       searchTerm,
       orderBy = 'created_at',
@@ -139,6 +141,30 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
     // 计算分页偏移量
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
+    
+    // 如果提供了categorySlug，先查询分类ID
+    let finalCategoryId = categoryId;
+    if (categorySlug && !categoryId) {
+      console.log(`🔍 通过分类slug查询分类ID: ${categorySlug}`);
+      const { data: category, error: categoryError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('slug', categorySlug)
+        .single();
+      
+      if (categoryError) {
+        console.error(`❌ 通过slug查询分类失败: ${categorySlug}`, categoryError);
+        return { data: null, count: null, error: categoryError };
+      }
+      
+      if (!category) {
+        console.log(`❌ 未找到slug为 ${categorySlug} 的分类`);
+        return { data: [], count: 0, error: null };
+      }
+      
+      finalCategoryId = category.id;
+      console.log(`✅ 找到分类ID: ${finalCategoryId} (slug: ${categorySlug})`);
+    }
     
     // 如果需要根据标签过滤，使用不同的查询方式
     if (tagId) {
@@ -157,12 +183,12 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         query = query.eq('posts.author_id', authorId);
       }
       
-      if (categoryId) {
-        query = query.eq('posts.category_id', categoryId);
+      if (finalCategoryId) {
+        query = query.eq('posts.category_id', finalCategoryId);
       }
       
       if (searchTerm) {
-        query = query.ilike('posts.title', `%${searchTerm}%`);
+        query = query.or(`title.ilike.%${searchTerm}%,excerpt.ilike.%${searchTerm}%`);
       }
       
       if (isTop !== undefined) {
@@ -203,12 +229,12 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         query = query.eq('author_id', authorId);
       }
       
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
+      if (finalCategoryId) {
+        query = query.eq('category_id', finalCategoryId);
       }
       
       if (searchTerm) {
-        query = query.ilike('title', `%${searchTerm}%`);
+        query = query.or(`title.ilike.%${searchTerm}%,excerpt.ilike.%${searchTerm}%`);
       }
       
       if (isTop !== undefined) {
@@ -755,6 +781,157 @@ export async function getPostTags(postId: string): Promise<{
     console.error(`❌ 获取文章标签异常，文章ID: ${postId}`, error);
     return { 
       data: null, 
+      error: error as PostgrestError 
+    };
+  }
+}
+
+/**
+ * 获取置顶文章
+ * 如果没有置顶文章，则返回最新发布的文章
+ * @returns 置顶文章或最新文章
+ */
+export async function getTopPost(): Promise<{
+  data: Post | null;
+  error: PostgrestError | null;
+}> {
+  try {
+    console.log('🔍 获取置顶文章');
+    
+    // 首先尝试获取置顶文章
+    const { data: topPost, error: topError } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        categories(id, name),
+        users!posts_author_id_fkey(id, username, avatar_url, email)
+      `)
+      .eq('status', 'published')
+      .eq('is_top', true)
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (topPost) {
+      console.log('✅ 找到置顶文章:', topPost.title);
+      
+      // 处理作者信息
+      const authorData = Array.isArray(topPost.users) ? topPost.users[0] : topPost.users;
+      const categoryData = Array.isArray(topPost.categories) ? topPost.categories[0] : topPost.categories;
+
+      const username = getDisplayUsername(authorData?.username, authorData?.email);
+      const avatarUrl = authorData?.avatar_url || getDefaultAvatarUrl(authorData?.email, username);
+
+      const processedPost = {
+        ...topPost,
+        author: {
+          id: authorData?.id || '',
+          username: username,
+          avatar_url: avatarUrl
+        },
+        categories: categoryData || null
+      };
+      
+      return { data: processedPost, error: null };
+    }
+    
+    // 如果没有置顶文章，获取最新发布的文章
+    console.log('📝 没有置顶文章，获取最新发布的文章');
+    
+    const { data: latestPost, error: latestError } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        categories(id, name),
+        users!posts_author_id_fkey(id, username, avatar_url, email)
+      `)
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (latestError) {
+      console.error('❌ 获取最新文章失败:', latestError);
+      return { data: null, error: latestError };
+    }
+    
+    if (latestPost) {
+      console.log('✅ 找到最新文章:', latestPost.title);
+      
+      // 处理作者信息
+      const authorData = Array.isArray(latestPost.users) ? latestPost.users[0] : latestPost.users;
+      const categoryData = Array.isArray(latestPost.categories) ? latestPost.categories[0] : latestPost.categories;
+
+      const username = getDisplayUsername(authorData?.username, authorData?.email);
+      const avatarUrl = authorData?.avatar_url || getDefaultAvatarUrl(authorData?.email, username);
+
+      const processedPost = {
+        ...latestPost,
+        author: {
+          id: authorData?.id || '',
+          username: username,
+          avatar_url: avatarUrl
+        },
+        categories: categoryData || null
+      };
+      
+      return { data: processedPost, error: null };
+    }
+    
+    console.log('📝 没有找到任何已发布的文章');
+    return { data: null, error: null };
+  } catch (error) {
+    console.error('❌ 获取置顶文章异常:', error);
+    return { 
+      data: null, 
+      error: error as PostgrestError 
+    };
+  }
+}
+
+/**
+ * 通过分类slug获取文章列表
+ * @param categorySlug 分类slug
+ * @param params 查询参数
+ * @returns 文章列表和分页信息
+ */
+export async function getPostsByCategorySlug(
+  categorySlug: string, 
+  params: Omit<PostQueryParams, 'categorySlug' | 'categoryId'> = {}
+): Promise<PostPaginationResult> {
+  try {
+    console.log(`🔍 通过分类slug获取文章列表: ${categorySlug}`);
+    
+    // 首先查询分类信息
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('id, name, slug')
+      .eq('slug', categorySlug)
+      .single();
+    
+    if (categoryError) {
+      console.error(`❌ 查询分类失败: ${categorySlug}`, categoryError);
+      return { data: null, count: null, error: categoryError };
+    }
+    
+    if (!category) {
+      console.log(`❌ 未找到分类: ${categorySlug}`);
+      return { data: [], count: 0, error: null };
+    }
+    
+    console.log(`✅ 找到分类: ${category.name} (ID: ${category.id})`);
+    
+    // 使用现有的getPosts函数，传入categoryId
+    return await getPosts({
+      ...params,
+      categoryId: category.id,
+      status: params.status || 'published' // 默认只显示已发布的文章
+    });
+  } catch (error) {
+    console.error(`❌ 通过分类slug获取文章列表异常: ${categorySlug}`, error);
+    return { 
+      data: null, 
+      count: null, 
       error: error as PostgrestError 
     };
   }
