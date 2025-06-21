@@ -25,6 +25,11 @@ export interface Post {
   updated_at: string;
   // 关联数据
   categories?: Category | null; // 关联的分类信息
+  author?: {
+    id: string;
+    username: string;
+    avatar_url: string;
+  } | null; // 关联的作者信息
 }
 
 /**
@@ -183,7 +188,11 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       // 常规文章查询
       let query = supabase
         .from('posts')
-        .select('*, categories(id, name)', { count: 'exact' });
+        .select(`
+          *,
+          categories(id, name),
+          users!posts_author_id_fkey(id, username, avatar_url, email)
+        `, { count: 'exact' });
       
       // 应用过滤条件
       if (status !== 'all') {
@@ -220,7 +229,29 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         console.error('❌ 获取文章列表失败:', error);
       }
       
-      return { data, count, error };
+      // 处理作者信息，确保结构与前端期望一致
+      const processedPosts = data?.map(post => {
+        // 处理作者信息，确保结构与前端期望一致
+        // Supabase 返回的关联数据可能是数组，取第一个元素
+        const authorData = Array.isArray(post.users) ? post.users[0] : post.users;
+        const categoryData = Array.isArray(post.categories) ? post.categories[0] : post.categories;
+
+        // 使用工具函数处理用户名和头像
+        const username = getDisplayUsername(authorData?.username, authorData?.email);
+        const avatarUrl = authorData?.avatar_url || getDefaultAvatarUrl(authorData?.email, username);
+
+        return {
+          ...post,
+          author: {
+            id: authorData?.id || '',
+            username: username,
+            avatar_url: avatarUrl
+          },
+          categories: categoryData || null
+        };
+      }) || [];
+      
+      return { data: processedPosts, count, error };
     }
   } catch (error) {
     console.error('❌ 获取文章列表异常:', error);

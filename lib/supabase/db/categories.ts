@@ -286,3 +286,66 @@ export async function deleteCategory(id: string): Promise<{
     };
   }
 }
+
+/**
+ * 获取分类统计信息（包含每个分类的文章数量）
+ * @returns 分类统计信息
+ */
+export async function getCategoryStats(): Promise<{
+  data: { id: string; name: string; slug: string; count: number }[] | null;
+  error: PostgrestError | null;
+}> {
+  try {
+    // 首先获取所有分类
+    const { data: categories, error: categoriesError } = await supabase
+      .from('categories')
+      .select('id, name, slug')
+      .order('name');
+    
+    if (categoriesError) {
+      console.error('❌ 获取分类列表失败:', categoriesError);
+      return { data: null, error: categoriesError };
+    }
+
+    if (!categories || categories.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // 获取每个分类的文章数量
+    const categoryStats = await Promise.all(
+      categories.map(async (category) => {
+        const { count, error: countError } = await supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('category_id', category.id)
+          .eq('status', 'published');
+
+        if (countError) {
+          console.error(`❌ 获取分类 ${category.name} 文章数量失败:`, countError);
+          return {
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+            count: 0
+          };
+        }
+
+        return {
+          id: category.id,
+          name: category.name,
+          slug: category.slug,
+          count: count || 0
+        };
+      })
+    );
+    
+    console.log(`✅ 成功获取 ${categoryStats.length} 个分类的统计信息:`, categoryStats);
+    return { data: categoryStats, error: null };
+  } catch (error) {
+    console.error('❌ 获取分类统计信息异常:', error);
+    return { 
+      data: null, 
+      error: error as PostgrestError 
+    };
+  }
+}

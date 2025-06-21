@@ -401,22 +401,58 @@ export async function isTagSlugAvailable(slug: string, excludeId?: string): Prom
 }
 
 /**
- * 获取标签统计信息
+ * 获取标签统计信息（包含每个标签的文章数量）
  * @returns 标签统计信息
  */
 export async function getTagStats(): Promise<{
-  data: { id: string; name: string; count: number }[] | null;
+  data: { id: string; name: string; slug: string; count: number }[] | null;
   error: PostgrestError | null;
 }> {
   try {
-    const { data, error } = await supabase
-      .rpc('get_tag_post_counts');
+    // 首先获取所有标签
+    const { data: tags, error: tagsError } = await supabase
+      .from('tags')
+      .select('id, name, slug')
+      .order('name');
     
-    if (error) {
-      console.error('❌ 获取标签统计信息失败:', error);
+    if (tagsError) {
+      console.error('❌ 获取标签列表失败:', tagsError);
+      return { data: null, error: tagsError };
     }
+
+    if (!tags || tags.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // 获取每个标签的文章数量
+    const tagStats = await Promise.all(
+      tags.map(async (tag) => {
+        const { count, error: countError } = await supabase
+          .from('post_tags')
+          .select('*', { count: 'exact', head: true })
+          .eq('tag_id', tag.id);
+
+        if (countError) {
+          console.error(`❌ 获取标签 ${tag.name} 文章数量失败:`, countError);
+          return {
+            id: tag.id,
+            name: tag.name,
+            slug: tag.slug,
+            count: 0
+          };
+        }
+
+        return {
+          id: tag.id,
+          name: tag.name,
+          slug: tag.slug,
+          count: count || 0
+        };
+      })
+    );
     
-    return { data, error };
+    console.log(`✅ 成功获取 ${tagStats.length} 个标签的统计信息:`, tagStats);
+    return { data: tagStats, error: null };
   } catch (error) {
     console.error('❌ 获取标签统计信息异常:', error);
     return { 
