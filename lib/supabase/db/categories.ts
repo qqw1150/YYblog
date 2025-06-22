@@ -311,33 +311,35 @@ export async function getCategoryStats(): Promise<{
       return { data: [], error: null };
     }
 
-    // 获取每个分类的文章数量
-    const categoryStats = await Promise.all(
-      categories.map(async (category) => {
-        const { count, error: countError } = await supabase
-          .from('posts')
-          .select('*', { count: 'exact', head: true })
-          .eq('category_id', category.id)
-          .eq('status', 'published');
+    // 一次性获取所有分类的文章数量统计
+    const { data: postCounts, error: countError } = await supabase
+      .from('posts')
+      .select('category_id')
+      .eq('status', 'published');
 
-        if (countError) {
-          console.error(`❌ 获取分类 ${category.name} 文章数量失败:`, countError);
-          return {
-            id: category.id,
-            name: category.name,
-            slug: category.slug,
-            count: 0
-          };
+    if (countError) {
+      console.error('❌ 获取分类文章数量统计失败:', countError);
+      return { data: null, error: countError };
+    }
+
+    // 统计每个分类的文章数量
+    const categoryCountMap = new Map<string, number>();
+    if (postCounts) {
+      postCounts.forEach((item: any) => {
+        const categoryId = item.category_id;
+        if (categoryId) {
+          categoryCountMap.set(categoryId, (categoryCountMap.get(categoryId) || 0) + 1);
         }
+      });
+    }
 
-        return {
-          id: category.id,
-          name: category.name,
-          slug: category.slug,
-          count: count || 0
-        };
-      })
-    );
+    // 组装最终结果
+    const categoryStats = categories.map(category => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      count: categoryCountMap.get(category.id) || 0
+    }));
     
     console.log(`✅ 成功获取 ${categoryStats.length} 个分类的统计信息:`, categoryStats);
     return { data: categoryStats, error: null };

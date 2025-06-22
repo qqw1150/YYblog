@@ -49,6 +49,7 @@ export default function TagsManagement() {
   const [tags, setTags] = useState<TagStats[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // 搜索和筛选状态
@@ -72,11 +73,20 @@ export default function TagsManagement() {
   // 成功消息状态
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
+  // 请求去重状态
+  const [isRequesting, setIsRequesting] = useState(false);
+  
   /**
    * 加载标签数据
    */
   const loadTags = async () => {
+    // 防止重复请求
+    if (isRequesting) {
+      return;
+    }
+    
     try {
+      setIsRequesting(true);
       setIsLoading(true);
       setError(null);
       
@@ -142,6 +152,7 @@ export default function TagsManagement() {
       setError('加载标签时发生错误，请稍后重试');
     } finally {
       setIsLoading(false);
+      setIsRequesting(false);
     }
   };
   
@@ -154,7 +165,6 @@ export default function TagsManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1);
-      loadTags();
     }, 300);
     
     return () => clearTimeout(timer);

@@ -34,6 +34,7 @@ interface CategoryStats {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   count: number;
 }
 
@@ -49,6 +50,7 @@ export default function CategoriesManagement() {
   const [categories, setCategories] = useState<CategoryStats[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // 搜索和筛选状态
@@ -73,11 +75,23 @@ export default function CategoriesManagement() {
   // 成功消息状态
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
+  // 请求去重状态
+  const [isRequesting, setIsRequesting] = useState(false);
+  
+  // 当前激活的标签页
+  const [activeTab, setActiveTab] = useState<'basic' | 'seo' | 'comments' | 'advanced'>('basic');
+  
   /**
    * 加载分类数据
    */
   const loadCategories = async () => {
+    // 防止重复请求
+    if (isRequesting) {
+      return;
+    }
+    
     try {
+      setIsRequesting(true);
       setIsLoading(true);
       setError(null);
       
@@ -143,6 +157,7 @@ export default function CategoriesManagement() {
       setError('加载分类时发生错误，请稍后重试');
     } finally {
       setIsLoading(false);
+      setIsRequesting(false);
     }
   };
   
@@ -155,7 +170,6 @@ export default function CategoriesManagement() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1);
-      loadCategories();
     }, 300);
     
     return () => clearTimeout(timer);
@@ -503,7 +517,12 @@ export default function CategoriesManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => openEditModal(category)}
+                            onClick={() => openEditModal({
+                              id: category.id,
+                              name: category.name,
+                              slug: category.slug,
+                              description: category.description || null
+                            })}
                             className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                             title="编辑分类"
                           >

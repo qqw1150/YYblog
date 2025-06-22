@@ -424,32 +424,34 @@ export async function getTagStats(): Promise<{
       return { data: [], error: null };
     }
 
-    // 获取每个标签的文章数量
-    const tagStats = await Promise.all(
-      tags.map(async (tag) => {
-        const { count, error: countError } = await supabase
-          .from('post_tags')
-          .select('*', { count: 'exact', head: true })
-          .eq('tag_id', tag.id);
+    // 一次性获取所有标签的文章数量统计
+    const { data: postTagCounts, error: countError } = await supabase
+      .from('post_tags')
+      .select('tag_id, count')
+      .select('tag_id')
+      .order('tag_id');
 
-        if (countError) {
-          console.error(`❌ 获取标签 ${tag.name} 文章数量失败:`, countError);
-          return {
-            id: tag.id,
-            name: tag.name,
-            slug: tag.slug,
-            count: 0
-          };
-        }
+    if (countError) {
+      console.error('❌ 获取标签文章数量统计失败:', countError);
+      return { data: null, error: countError };
+    }
 
-        return {
-          id: tag.id,
-          name: tag.name,
-          slug: tag.slug,
-          count: count || 0
-        };
-      })
-    );
+    // 统计每个标签的文章数量
+    const tagCountMap = new Map<string, number>();
+    if (postTagCounts) {
+      postTagCounts.forEach((item: any) => {
+        const tagId = item.tag_id;
+        tagCountMap.set(tagId, (tagCountMap.get(tagId) || 0) + 1);
+      });
+    }
+
+    // 组装最终结果
+    const tagStats = tags.map(tag => ({
+      id: tag.id,
+      name: tag.name,
+      slug: tag.slug,
+      count: tagCountMap.get(tag.id) || 0
+    }));
     
     console.log(`✅ 成功获取 ${tagStats.length} 个标签的统计信息:`, tagStats);
     return { data: tagStats, error: null };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PostStatus, PostStatusList } from '@/lib/supabase/db/posts';
 import { getAllCategories, Category } from '@/lib/supabase/db/categories';
 
@@ -82,25 +82,30 @@ export default function PostSettingsModal({
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
+  // 使用useMemo来稳定依赖项，避免无限循环
+  const stableInitialData = useMemo(() => initialData, []);
+  const stableTitle = useMemo(() => title, []);
+  const stableContent = useMemo(() => content, []);
+
   // 处理初始数据（编辑模式）
   useEffect(() => {
-    if (initialData && Object.keys(initialData).length > 0) {
-      console.log('📋 PostSettingsModal 接收到初始数据:', initialData);
-      console.log('📋 状态字段:', initialData.status);
+    if (stableInitialData && Object.keys(stableInitialData).length > 0) {
+      console.log('📋 PostSettingsModal 接收到初始数据:', stableInitialData);
+      console.log('📋 状态字段:', stableInitialData.status);
       setFormData(prev => {
         const newData = {
           ...prev,
-          ...initialData,
+          ...stableInitialData,
           // 确保标题和内容优先使用传入的值
-          title: title || initialData.title || prev.title,
-          content: content || initialData.content || prev.content,
+          title: stableTitle || stableInitialData.title || prev.title,
+          content: stableContent || stableInitialData.content || prev.content,
         };
         console.log('📋 PostSettingsModal 更新后的表单数据:', newData);
         console.log('📋 更新后的状态字段:', newData.status);
         return newData;
       });
     }
-  }, [initialData, title, content]);
+  }, [stableInitialData, stableTitle, stableContent]);
 
   // 获取分类数据
   useEffect(() => {
