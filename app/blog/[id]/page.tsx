@@ -13,7 +13,7 @@ import { ArticleDetailSkeleton } from '@/components/ui/Skeleton';
 interface PostWithTags {
   id: string;
   title: string;
-  content: any;
+  content: string;
   excerpt: string | null;
   featured_image: string | null;
   status: string;

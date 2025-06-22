@@ -102,7 +102,9 @@ export default function PostEditor({ postId }: PostEditorProps) {
       setError('请输入文章标题');
       return;
     }
-    if (!content.trim()) {
+    // 确保content是字符串类型
+    const contentStr = typeof content === 'string' ? content : String(content || '');
+    if (!contentStr.trim()) {
       setError('请输入文章内容');
       return;
     }

@@ -178,14 +178,17 @@ export default function PostSettingsModal({
       return;
     }
     
-    if (!formData.content.trim()) {
+    // 确保content是字符串类型
+    const contentStr = typeof formData.content === 'string' ? formData.content : String(formData.content || '');
+    if (!contentStr.trim()) {
       alert('请输入文章内容');
       return;
     }
     
     // 如果没有填写摘要，自动提取正文前150字
-    if (!formData.excerpt.trim() && formData.content.trim()) {
-      const excerpt = formData.content.replace(/<[^>]*>/g, '').substring(0, 150);
+    if (!formData.excerpt.trim() && contentStr.trim()) {
+      // 确保content是字符串类型
+      const excerpt = contentStr.replace(/<[^>]*>/g, '').substring(0, 150);
       formData.excerpt = excerpt + (excerpt.length === 150 ? '...' : '');
     }
     

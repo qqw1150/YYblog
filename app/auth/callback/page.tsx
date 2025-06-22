@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Mail, RefreshCw, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { resendVerificationEmail } from "@/lib/supabase/db/auth";
 
-export default function AuthCallbackPage() {
+function CallbackContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
   const [loading, setLoading] = useState(false);
@@ -190,5 +190,13 @@ export default function AuthCallbackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div>加载中...</div>}>
+      <CallbackContent />
+    </Suspense>
   );
 } 

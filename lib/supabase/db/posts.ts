@@ -10,7 +10,7 @@ export interface Post {
   id: string; // UUID类型
   title: string;
   slug: string;
-  content: any; // jsonb类型
+  content: string; // 修改为字符串类型
   excerpt: string | null;
   featured_image: string | null; // 改为featured_image
   status: 'published' | 'draft';
@@ -53,7 +53,7 @@ export const PostStatusList = function(){
 export interface PostCreate {
   title: string;
   slug: string;
-  content: any; // jsonb类型
+  content: string; // 修改为字符串类型
   excerpt?: string | null;
   featured_image?: string | null; // 改为featured_image
   status: 'published' | 'draft';
@@ -72,7 +72,7 @@ export interface PostCreate {
 export interface PostUpdate {
   title?: string;
   slug?: string;
-  content?: any; // jsonb类型
+  content?: string; // 修改为字符串类型
   excerpt?: string | null;
   featured_image?: string | null; // 改为featured_image
   status?: 'published' | 'draft';

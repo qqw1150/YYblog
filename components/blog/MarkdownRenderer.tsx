@@ -28,6 +28,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   // 预处理内容，将反引号包裹的文本转换为斜体格式
   const processedContent = React.useMemo(() => {
+    // 确保content是字符串类型
+    if (typeof content !== 'string') {
+      console.warn('MarkdownRenderer: content不是字符串类型:', typeof content, content);
+      return '';
+    }
+
     let processed = content;
 
     // 处理反引号转换为斜体格式
