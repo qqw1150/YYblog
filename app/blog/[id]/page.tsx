@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
@@ -40,9 +40,9 @@ interface PostWithTags {
   comments_count?: number;
 }
 
-export default function BlogPostPage({ params }: { params: { id: string } }) {
-  // 这里的id来自于路由参数
-  const { id } = params;
+export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
+  // 使用 React.use() 解包 params Promise
+  const { id } = use(params);
   
   // 状态管理
   const [post, setPost] = useState<PostWithTags | null>(null);

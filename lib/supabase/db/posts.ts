@@ -168,23 +168,47 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
     
     // 如果需要根据标签过滤，使用不同的查询方式
     if (tagId) {
-      // 使用联表查询获取带有特定标签的文章
-      let query = supabase
+      // 首先获取带有该标签的文章ID列表
+      const { data: postTagData, error: postTagError } = await supabase
         .from('post_tags')
-        .select('posts!inner(*, categories(id, name))')
+        .select('post_id')
         .eq('tag_id', tagId);
       
-      // 应用额外的过滤条件
+      if (postTagError) {
+        console.error('❌ 获取标签文章ID列表失败:', postTagError);
+        return { data: null, count: null, error: postTagError };
+      }
+      
+      if (!postTagData || postTagData.length === 0) {
+        console.log('📝 该标签下没有文章');
+        return { data: [], count: 0, error: null };
+      }
+      
+      // 提取文章ID列表
+      const postIds = postTagData.map(item => item.post_id);
+      console.log(`🔍 找到 ${postIds.length} 篇标签文章`);
+      
+      // 使用文章ID列表查询文章详情
+      let query = supabase
+        .from('posts')
+        .select(`
+          *,
+          categories(id, name),
+          users!posts_author_id_fkey(id, username, avatar_url, email)
+        `, { count: 'exact' })
+        .in('id', postIds);
+      
+      // 应用过滤条件
       if (status !== 'all') {
-        query = query.eq('posts.status', status);
+        query = query.eq('status', status);
       }
       
       if (authorId) {
-        query = query.eq('posts.author_id', authorId);
+        query = query.eq('author_id', authorId);
       }
       
       if (finalCategoryId) {
-        query = query.eq('posts.category_id', finalCategoryId);
+        query = query.eq('category_id', finalCategoryId);
       }
       
       if (searchTerm) {
@@ -192,12 +216,12 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
       }
       
       if (isTop !== undefined) {
-        query = query.eq('posts.is_top', isTop);
+        query = query.eq('is_top', isTop);
       }
       
       // 应用排序和分页
-      const { data: taggedPostsData, error, count } = await query
-        .order(`posts.${orderBy}`, { ascending: orderDirection === 'asc' })
+      const { data, error, count } = await query
+        .order(orderBy, { ascending: orderDirection === 'asc' })
         .range(from, to);
       
       if (error) {
@@ -205,11 +229,27 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         return { data: null, count: null, error };
       }
       
-      // 提取文章数据，使用unknown进行类型转换
-      const posts = ((taggedPostsData as unknown) as PostTagResult[]).map(item => item.posts);
-      console.log(`📊 查询结果: 获取到 ${posts.length} 篇标签文章`);
+      // 处理作者信息，确保结构与前端期望一致
+      const processedPosts = data?.map(post => {
+        const authorData = Array.isArray(post.users) ? post.users[0] : post.users;
+        const categoryData = Array.isArray(post.categories) ? post.categories[0] : post.categories;
+
+        const username = getDisplayUsername(authorData?.username, authorData?.email);
+        const avatarUrl = authorData?.avatar_url || getDefaultAvatarUrl(authorData?.email, username);
+
+        return {
+          ...post,
+          author: {
+            id: authorData?.id || '',
+            username: username,
+            avatar_url: avatarUrl
+          },
+          categories: categoryData || null
+        };
+      }) || [];
       
-      return { data: posts, count, error };
+      console.log(`📊 查询结果: 获取到 ${processedPosts.length} 篇标签文章`);
+      return { data: processedPosts, count, error };
     } else {
       // 常规文章查询
       let query = supabase
