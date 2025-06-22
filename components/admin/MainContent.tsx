@@ -69,45 +69,6 @@ export default function MainContent() {
                 </Link>
               ))}
             </div>
-
-            {/* 最近活动区域 */}
-            <div className="mt-8">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">最近活动</h2>
-              <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                <ul className="divide-y divide-gray-200">
-                  {[...Array(3)].map((_, i) => (
-                    <li key={i}>
-                      <div className="px-4 py-4 sm:px-6">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-blue-600 truncate">
-                            {i === 0 ? '发布了新文章' : i === 1 ? '更新了网站设置' : '添加了新标签'}
-                          </p>
-                          <div className="ml-2 flex-shrink-0 flex">
-                            <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              {i === 0 ? '文章' : i === 1 ? '设置' : '标签'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex justify-between">
-                          <div className="sm:flex">
-                            <p className="flex items-center text-sm text-gray-500">
-                              {i === 0 
-                                ? '《如何优化网站性能》已发布' 
-                                : i === 1 
-                                  ? '更新了网站标题和描述' 
-                                  : '添加了"性能优化"标签'}
-                            </p>
-                          </div>
-                          <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                            {i === 0 ? '10分钟前' : i === 1 ? '1小时前' : '昨天'}
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
           </div>
         </div>
       </main>
