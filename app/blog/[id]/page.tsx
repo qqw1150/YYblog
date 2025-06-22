@@ -1,10 +1,13 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
 import { getPostWithTags } from '@/lib/supabase/db/posts';
 import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+import { ArticleDetailSkeleton } from '@/components/ui/Skeleton';
 
 // 定义文章详情页面的数据类型
 interface PostWithTags {
@@ -37,21 +40,54 @@ interface PostWithTags {
   comments_count?: number;
 }
 
-export default async function BlogPostPage({ params }: { params: { id: string } }) {
+export default function BlogPostPage({ params }: { params: { id: string } }) {
   // 这里的id来自于路由参数
   const { id } = params;
+  
+  // 状态管理
+  const [post, setPost] = useState<PostWithTags | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 调用真实API获取文章详情（带标签）
-  const { data: post, error } = await getPostWithTags(id);
+  // 获取文章数据
+  useEffect(() => {
+    const fetchPost = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await getPostWithTags(id);
+        
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        
+        if (!data) {
+          setError('未找到该文章');
+          return;
+        }
+        
+        setPost(data as PostWithTags);
+      } catch (err) {
+        console.error('获取文章失败:', err);
+        setError('获取文章失败');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // 打印post
-  console.log('post:', post);
+    fetchPost();
+  }, [id]);
+
+  // 加载状态显示骨架屏
+  if (loading) {
+    return <ArticleDetailSkeleton />;
+  }
 
   // 错误处理
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-rose-600 text-xl font-bold">
-        加载文章失败：{error.message}
+        加载文章失败：{error}
       </div>
     );
   }
@@ -65,12 +101,9 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
     );
   }
 
-  // 类型断言
-  const typedPost = post as PostWithTags;
-
   // 确保作者信息有默认值
-  const authorName = typedPost.author.username || '匿名用户';
-  const authorAvatar = typedPost.author.avatar_url || getDefaultAvatarUrl();
+  const authorName = post.author.username || '匿名用户';
+  const authorAvatar = post.author.avatar_url || getDefaultAvatarUrl();
 
   return (
     <div className="min-h-screen relative bg-gray-50">
@@ -79,7 +112,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 mix-blend-overlay"></div>
         <div className="max-w-4xl mx-auto px-4 relative z-10">
           <Link 
-            href="/blog" 
+            href="/" 
             className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-8 transition bg-white/90 px-4 py-1.5 rounded-full shadow-md hover:shadow-lg transform hover:translate-x-1 hover:scale-105 duration-300"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,7 +120,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
             </svg>
             返回文章列表
           </Link>
-          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 drop-shadow-sm leading-tight">{typedPost.title}</h1>
+          <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 drop-shadow-sm leading-tight">{post.title}</h1>
           
           {/* 文章元信息 */}
           <div className="flex flex-col sm:flex-row sm:items-center text-gray-600 mb-8 gap-3 sm:gap-4 bg-white/90 p-4 rounded-xl shadow-md backdrop-blur-sm border border-gray-300">
@@ -105,19 +138,19 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
               <span className="font-medium">{authorName}</span>
             </div>
             <span className="hidden sm:inline text-gray-400">•</span>
-            <time dateTime={typedPost.published_at} className="flex items-center text-gray-500">
+            <time dateTime={post.published_at} className="flex items-center text-gray-500">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {formatDateTime(typedPost.published_at)}
+              {formatDateTime(post.published_at)}
             </time>
             <span className="hidden sm:inline text-gray-400">•</span>
-            <span className="bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white px-3 py-1 rounded-md text-sm shadow-md border border-white/30">{typedPost.category.name}</span>
+            <span className="bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white px-3 py-1 rounded-md text-sm shadow-md border border-white/30">{post.category.name}</span>
           </div>
           
           {/* 标签 */}
           <div className="flex flex-wrap gap-2 mb-8">
-            {typedPost.tags.map(tag => (
+            {post.tags.map(tag => (
               <Link 
                 key={tag.id} 
                 href={`/blog/tag/${tag.id}`}
@@ -132,11 +165,11 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
       
       <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-20">
         {/* 特色图片 */}
-        {typedPost.featured_image && (
+        {post.featured_image && (
           <div className="mb-8 relative h-[400px] w-full rounded-xl overflow-hidden shadow-xl transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl border border-gray-300">
             <Image 
-              src={typedPost.featured_image} 
-              alt={typedPost.title}
+              src={post.featured_image} 
+              alt={post.title}
               fill
               className="object-cover"
               priority
@@ -165,7 +198,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
             prose-strong:text-indigo-700 prose-strong:font-semibold
             prose-ul:marker:text-indigo-600 prose-li:my-2
           ">
-            <MarkdownRenderer content={typedPost.content} />
+            <MarkdownRenderer content={post.content} />
           </article>
         </div>
         
@@ -179,19 +212,19 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                  <span>{typedPost.views || 0} 阅读</span>
+                  <span>{post.views || 0} 阅读</span>
                 </div>
                 <div className="flex items-center text-gray-700 group hover:text-rose-600 transition-all">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-400 group-hover:text-rose-500 mr-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span>{typedPost.likes || 0} 赞</span>
+                  <span>{post.likes || 0} 赞</span>
                 </div>
                 <div className="flex items-center text-gray-700 group hover:text-indigo-600 transition-all">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400 group-hover:text-indigo-500 mr-1 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
-                  <span>{typedPost.comments_count || 0} 评论</span>
+                  <span>{post.comments_count || 0} 评论</span>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -232,57 +265,6 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
                 关注作者
               </button>
             </div>
-          </div>
-        </div>
-        
-        {/* 相关文章推荐 */}
-        <div className="mb-12">
-          <div className="flex items-center mb-6">
-            <div className="h-1 w-6 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mr-2"></div>
-            <h2 className="text-2xl font-bold text-gray-900">相关文章</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[1, 2].map(i => (
-              <div key={i} className="group bg-white rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-300">
-                <div className="relative h-48 w-full overflow-hidden">
-                  <Image 
-                    src={`https://images.unsplash.com/photo-1587620962725-abab7fe55159?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80&random=${i}`} 
-                    alt="相关文章"
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </div>
-                <div className="p-6">
-                  <div className="mb-2">
-                    <span className="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-full font-medium border border-indigo-300">React</span>
-                  </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">React Hooks深入解析与实践案例</h3>
-                  <div className="flex items-center mb-3 text-gray-500 text-sm">
-                    <span className="mr-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      2023-07-28
-                    </span>
-                    <span className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      1024
-                    </span>
-                  </div>
-                  <p className="text-gray-600 line-clamp-2">探索React Hooks的强大功能，通过实际案例学习如何优化组件设计和状态管理...</p>
-                  <Link href="/blog/related-1" className="inline-flex items-center mt-4 text-indigo-600 hover:text-indigo-800 font-medium group-hover:underline">
-                    阅读更多
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </Link>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>

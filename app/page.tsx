@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { formatDate } from '@/utils/dateFormatter';
 import { getCategoryStats, getTagStats, getPosts, getTopPost } from '@/lib/supabase/db';
 import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+import { ArticleListSkeleton, SidebarSkeleton, ArticleCardSkeleton } from '@/components/ui/Skeleton';
 
 // 默认图片常量
 const DEFAULT_FEATURED_IMAGE = 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80';
@@ -27,6 +28,7 @@ export default function BlogPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(''); // 搜索关键词状态
   const [isSearching, setIsSearching] = useState(false); // 搜索状态
+  const [isPageLoading, setIsPageLoading] = useState(false); // 分页加载状态
 
   // 每页显示的文章数量
   const pageSize = 10;
@@ -34,7 +36,13 @@ export default function BlogPage() {
   // 获取数据的函数
   const fetchData = async (page = 1, search = '') => {
     try {
+      // 如果是第一页且没有文章数据，显示完整骨架屏
+      if (page === 1 && posts.length === 0) {
       setLoading(true);
+      } else {
+        // 否则只显示文章列表的骨架屏
+        setIsPageLoading(true);
+      }
       
       // 并行获取分类、标签和文章数据
       const [categoryStats, tagStats, postsResult] = await Promise.all([
@@ -77,6 +85,7 @@ export default function BlogPage() {
       setError('获取数据失败');
     } finally {
       setLoading(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -122,6 +131,8 @@ export default function BlogPage() {
     try {
       setIsSearching(true);
       setCurrentPage(1); // 重置到第一页
+      // 搜索时显示骨架屏
+      setIsPageLoading(true);
       await fetchData(1, searchTerm.trim());
       // 滚动到页面顶部
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -130,6 +141,7 @@ export default function BlogPage() {
       setError('搜索失败');
     } finally {
       setIsSearching(false);
+      setIsPageLoading(false);
     }
   };
 
@@ -144,6 +156,8 @@ export default function BlogPage() {
   const handleClearSearch = () => {
     setSearchTerm('');
     setCurrentPage(1);
+    // 清空搜索时显示骨架屏
+    setIsPageLoading(true);
     fetchData(1, '');
   };
 
@@ -214,10 +228,28 @@ export default function BlogPage() {
   // 加载状态
   if (loading && posts.length === 0) {
     return (
-      <div className="min-h-screen relative bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">正在加载文章...</p>
+      <div className="min-h-screen relative bg-gray-50">
+        {/* 页面头部 */}
+        <div className="relative py-20 z-10">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 mix-blend-overlay"></div>
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
+            <div className="relative">
+              <div className="absolute -left-8 -top-8 w-24 h-24 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-full blur-xl"></div>
+              <h1 className="text-5xl font-bold text-gray-900 mb-6 drop-shadow-sm relative">博客文章</h1>
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-gradient-to-r from-pink-400/20 to-rose-400/20 rounded-full blur-xl"></div>
+            </div>
+            <p className="text-gray-700 text-xl max-w-3xl font-medium">探索最新的Web开发技术、教程和最佳实践，提升您的开发技能和知识</p>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 py-12 relative z-10">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* 文章列表骨架屏 */}
+            <ArticleListSkeleton />
+            
+            {/* 侧边栏骨架屏 */}
+            <SidebarSkeleton />
+          </div>
         </div>
       </div>
     );
@@ -262,7 +294,7 @@ export default function BlogPage() {
           {/* 文章列表 */}
           <div className="w-full md:w-2/3">
             {/* 置顶文章 */}
-            {topPost && currentPage === 1 && (
+            {topPost && currentPage === 1 && !isPageLoading && (
             <div className="mb-12">
                 <Link href={`/blog/${topPost.id}`} className="block group">
                 <div className="relative h-[500px] w-full overflow-hidden rounded-2xl shadow-2xl border border-gray-300">
@@ -312,7 +344,17 @@ export default function BlogPage() {
             </div>
             )}
             
+            {/* 文章列表骨架屏 - 分页加载时显示 */}
+            {isPageLoading && (
+              <div className="grid grid-cols-1 gap-10">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <ArticleCardSkeleton key={i} />
+                ))}
+            </div>
+            )}
+            
             {/* 文章列表 */}
+            {!isPageLoading && (
             <div className="grid grid-cols-1 gap-10">
               {posts.map(post => (
                 <article key={post.id} className="group bg-white rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-300">
@@ -383,9 +425,10 @@ export default function BlogPage() {
                 </article>
               ))}
             </div>
+            )}
             
             {/* 分页 */}
-            {posts.length > 0 && totalPages > 1 && (
+            {posts.length > 0 && totalPages > 1 && !isPageLoading && (
             <div className="mt-16 flex justify-center">
               <div className="flex space-x-3">
                   {renderPaginationButtons()}
@@ -394,7 +437,7 @@ export default function BlogPage() {
             )}
 
             {/* 无文章时的提示 */}
-            {posts.length === 0 && !loading && (
+            {posts.length === 0 && !loading && !isPageLoading && (
               <div className="text-center py-20">
                 <div className="text-gray-400 text-6xl mb-4">
                   {searchTerm ? '🔍' : '📝'}
