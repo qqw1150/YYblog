@@ -6,7 +6,7 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
 import { getPostWithTags } from '@/lib/supabase/db/posts';
-import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+import { getDefaultAvatarUrl } from '@/lib/utils/avatarUtils';
 import { ArticleDetailSkeleton } from '@/components/ui/Skeleton';
 
 // 定义文章详情页面的数据类型

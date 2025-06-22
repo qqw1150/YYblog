@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatDate } from '@/utils/dateFormatter';
 import { getCategoryStats, getTagStats, getPosts, getTopPost } from '@/lib/supabase/db';
-import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+import { getDefaultAvatarUrl } from '@/lib/utils/avatarUtils';
 import { ArticleListSkeleton, SidebarSkeleton, ArticleCardSkeleton } from '@/components/ui/Skeleton';
 
 // 默认图片常量

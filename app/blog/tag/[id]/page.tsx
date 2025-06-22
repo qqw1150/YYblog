@@ -3,10 +3,9 @@
 import React, { useState, useEffect, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import { formatDate } from '@/utils/dateFormatter';
 import { getPosts, getTagById } from '@/lib/supabase/db';
-import { getDefaultAvatarUrl, getDisplayUsername } from '@/lib/utils/avatarUtils';
+import { getDefaultAvatarUrl} from '@/lib/utils/avatarUtils';
 
 // 默认图片常量
 const DEFAULT_FEATURED_IMAGE = 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80';
