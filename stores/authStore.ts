@@ -11,21 +11,24 @@ import {
 interface AuthState {
   user: User | null;
   loading: boolean;
-  isInitialized: boolean;
+  token: string | null;
+  tokenExpiresAt: number | null; // token过期时间戳
   
   // 操作方法
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkTokenExpiry: () => boolean; // 检查token是否过期
   setLoading: (loading: boolean) => void;
   clearUser: () => void;
+  initializeAuth: () => Promise<void>; // 初始化认证状态
 }
 
 // 创建授权状态管理
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: false,
-  isInitialized: false,
+  token: null,
+  tokenExpiresAt: null,
 
   // 设置加载状态
   setLoading: (loading: boolean) => {
@@ -34,12 +37,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // 清除用户信息
   clearUser: () => {
-    set({ user: null });
+    set({ user: null, token: null, tokenExpiresAt: null });
   },
 
-  // 检查用户认证状态
-  checkAuth: async () => {
-    console.log('🔍 开始检查认证状态...');
+  // 检查token是否过期
+  checkTokenExpiry: () => {
+    const { tokenExpiresAt } = get();
+    if (!tokenExpiresAt) return true; // 没有token视为过期
+    
+    const now = Date.now();
+    const isExpired = now >= tokenExpiresAt;
+    
+    if (isExpired) {
+      console.log('❌ Token已过期');
+      // 清除过期状态
+      set({ user: null, token: null, tokenExpiresAt: null });
+    }
+    
+    return isExpired;
+  },
+
+  // 初始化认证状态
+  initializeAuth: async () => {
+    console.log('🔍 初始化认证状态...');
     
     try {
       set({ loading: true });
@@ -48,7 +68,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { session, error } = await getCurrentSession();
       
       if (error) {
-        throw error;
+        console.error('❌ 获取会话失败:', error);
+        set({ loading: false });
+        return;
       }
 
       if (session?.user) {
@@ -60,23 +82,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         );
 
         if (userError) {
-          throw userError;
+          console.error('❌ 获取用户信息失败:', userError);
+          set({ loading: false });
+          return;
         }
 
         if (userInfo) {
-          console.log('✅ 设置用户信息:', userInfo);
-          set({ user: userInfo, loading: false, isInitialized: true });
+          // 计算token过期时间（假设token有效期为1小时）
+          const expiresAt = Date.now() + (60 * 60 * 1000); // 1小时后过期
+          
+          console.log('✅ 设置用户信息和token');
+          set({ 
+            user: userInfo, 
+            token: session.access_token,
+            tokenExpiresAt: expiresAt,
+            loading: false 
+          });
         } else {
           console.log('❌ 用户信息不存在');
-          set({ user: null, loading: false, isInitialized: true });
+          set({ loading: false });
         }
       } else {
         console.log('❌ 用户未登录');
-        set({ user: null, loading: false, isInitialized: true });
+        set({ loading: false });
       }
     } catch (error) {
-      console.error('❌ 认证检查失败:', error);
-      set({ user: null, loading: false, isInitialized: true });
+      console.error('❌ 初始化认证状态失败:', error);
+      set({ loading: false });
     }
   },
 
@@ -87,45 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ loading: true });
       
-      // 先检查这个邮箱是否已经登录
-      const { session, error: sessionError } = await getCurrentSession();
-      
-      if (sessionError) {
-        console.error("获取会话失败:", sessionError);
-        throw sessionError;
-      }
-
-      if (session?.user) {
-        console.log("✅ 用户已登录，检查是否是同一账号...");
-        
-        // 检查是否是同一邮箱
-        if (session.user.email === email) {
-          console.log("📧 同一邮箱已登录，获取用户信息...");
-          
-          // 获取完整用户信息
-          const { data: userInfo, error: userError } = await getCompleteUserInfo(
-            session.user.id
-          );
-
-          if (userError) {
-            console.error("获取用户信息失败:", userError);
-            throw userError;
-          }
-
-          if (userInfo) {
-            console.log("👤 用户信息:", userInfo);
-            set({ user: userInfo, loading: false });
-            return;
-          }
-        } else {
-          console.log("📧 不同邮箱，先登出当前用户");
-          // 如果是不同邮箱，先登出当前用户
-          await logoutUser();
-        }
-      }
-
       // 正常登录流程
-      console.log("🔐 开始正常登录...");
       const { user, error } = await loginUser(email, password);
 
       if (error) {
@@ -154,8 +148,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         if (userInfo) {
+          // 计算token过期时间（假设token有效期为1小时）
+          const expiresAt = Date.now() + (60 * 60 * 1000); // 1小时后过期
+          
           console.log("👤 用户信息:", userInfo);
-          set({ user: userInfo, loading: false });
+          set({ 
+            user: userInfo, 
+            token: user.id, // 简化处理，使用用户ID作为token
+            tokenExpiresAt: expiresAt,
+            loading: false 
+          });
         } else {
           throw new Error("获取用户信息失败");
         }
@@ -182,7 +184,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       
       console.log('✅ 登出成功');
-      set({ user: null, loading: false });
+      set({ user: null, token: null, tokenExpiresAt: null, loading: false });
     } catch (error) {
       console.error('❌ 登出失败:', error);
       set({ loading: false });

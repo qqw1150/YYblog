@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Shield, Home, ArrowLeft } from 'lucide-react';
+import { Shield, Home, ArrowLeft, RefreshCw } from 'lucide-react';
 
 export default function UnauthorizedPage() {
   return (
@@ -18,26 +18,42 @@ export default function UnauthorizedPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
               访问被拒绝
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-8">
-              抱歉，您没有权限访问此页面。此页面仅对管理员开放。
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              抱歉，您没有权限访问此页面。可能的原因：
             </p>
+            
+            {/* 可能的原因列表 */}
+            <div className="text-left mb-8 space-y-2">
+              <div className="flex items-start">
+                <div className="w-2 h-2 bg-red-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">您尚未登录系统</p>
+              </div>
+              <div className="flex items-start">
+                <div className="w-2 h-2 bg-red-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">您的登录会话已过期</p>
+              </div>
+              <div className="flex items-start">
+                <div className="w-2 h-2 bg-red-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">您的账户没有管理员权限</p>
+              </div>
+            </div>
 
             {/* 操作按钮 */}
             <div className="space-y-4">
               <Link
-                href="/"
+                href="/auth/login"
                 className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150"
               >
-                <Home className="w-4 h-4 mr-2" />
-                返回首页
+                <RefreshCw className="w-4 h-4 mr-2" />
+                重新登录
               </Link>
               
               <Link
-                href="/auth/login"
+                href="/"
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-white bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                重新登录
+                <Home className="w-4 h-4 mr-2" />
+                返回首页
               </Link>
             </div>
 

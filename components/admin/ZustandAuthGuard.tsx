@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
-import { initializeAuthListener, initializeAuth } from '@/stores/authListener';
 
 interface ZustandAuthGuardProps {
   children: React.ReactNode;
@@ -11,59 +10,104 @@ interface ZustandAuthGuardProps {
 }
 
 /**
- * 基于 Zustand 的管理员授权保护组件
- * 专用于保护管理端路由，确保只有管理员可以访问
+ * 简化的管理员认证保护组件
+ * 每次访问时检查token是否过期，无需复杂的监听器
  */
 export default function ZustandAuthGuard({ children, requiredRole = 'admin' }: ZustandAuthGuardProps) {
-  const { user, loading, isInitialized } = useAuthStore();
+  const { user, loading, initializeAuth, checkTokenExpiry } = useAuthStore();
   const router = useRouter();
-  const initRef = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [redirectPath, setRedirectPath] = useState('');
 
-  // 初始化认证监听器 - 优化版本，避免重复初始化
+  // 初始化认证状态
   useEffect(() => {
-    // 使用 ref 确保即使在严格模式下也只初始化一次
-    if (!initRef.current && !isInitialized) {
-      console.log('🛡️ 管理员认证初始化...');
-      initRef.current = true;
+    const initAuth = async () => {
+      console.log('🛡️ 初始化管理员认证...');
+      await initializeAuth();
+      setIsInitialized(true);
+    };
+
+    initAuth();
+  }, [initializeAuth]);
+
+  // 检查认证状态并决定跳转
+  useEffect(() => {
+    if (isInitialized && !loading) {
+      const isExpired = checkTokenExpiry();
       
-      // 初始化认证状态
-      initializeAuth();
-      
-      // 设置认证监听器
-      const cleanup = initializeAuthListener();
-      
-      return () => {
-        console.log('🧹 清理认证监听器');
-        cleanup();
-      };
+      // 检查用户是否已登录
+      if (!user) {
+        console.log('🚫 用户未登录，准备跳转到未授权页面');
+        setRedirectPath('/auth/unauthorized');
+        setShouldRedirect(true);
+        return;
+      }
+
+      // 检查token是否过期
+      if (isExpired) {
+        console.log('❌ Token已过期，准备跳转到未授权页面');
+        setRedirectPath('/auth/unauthorized');
+        setShouldRedirect(true);
+        return;
+      }
+
+      // 检查用户角色
+      if (user.role !== requiredRole) {
+        console.log('🚫 用户角色不匹配，准备跳转到未授权页面');
+        setRedirectPath('/auth/unauthorized');
+        setShouldRedirect(true);
+        return;
+      }
+
+      console.log('✅ 认证通过，可以渲染管理端内容');
     }
-  }, [isInitialized]); // 依赖 isInitialized 状态，确保状态变化时重新评估
+  }, [isInitialized, loading, checkTokenExpiry, user, requiredRole]);
 
-  // 仅在开发环境输出日志
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🛡️ 管理员认证状态 - loading:', loading, 'user:', user, 'requiredRole:', requiredRole, 'isInitialized:', isInitialized);
-  }
+  // 处理路由跳转
+  useEffect(() => {
+    if (shouldRedirect && redirectPath) {
+      console.log(`🔄 执行跳转: ${redirectPath}`);
+      router.replace(redirectPath);
+      setShouldRedirect(false);
+      setRedirectPath('');
+    }
+  }, [shouldRedirect, redirectPath, router]);
 
-  // 如果还未初始化，显示加载状态
-  if (!isInitialized || loading) {
+  // 如果还在加载中或未初始化，显示加载状态
+  if (loading || !isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在验证身份...</p>
+        </div>
       </div>
     );
   }
 
-  // 检查用户是否已登录
-  if (!user) {
-    // 使用 replace 而不是 push，避免浏览器历史堆积
-    router.replace('/auth/unauthorized');
-    return null;
+  // 如果需要跳转，显示加载状态
+  if (shouldRedirect) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在跳转...</p>
+        </div>
+      </div>
+    );
   }
 
-  // 检查用户角色 - 默认要求管理员角色
-  if (user.role !== requiredRole) {
-    router.replace('/auth/unauthorized');
-    return null;
+  // 如果用户未登录或token过期或角色不匹配，显示加载状态直到跳转
+  if (!user || checkTokenExpiry() || (user && user.role !== requiredRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在验证权限...</p>
+        </div>
+      </div>
+    );
   }
 
   // 认证通过，渲染子组件

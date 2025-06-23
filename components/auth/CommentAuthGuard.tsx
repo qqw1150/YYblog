@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { initializeAuthListener, initializeAuth } from '@/stores/authListener';
 
 interface CommentAuthGuardProps {
   children: React.ReactNode;
@@ -10,7 +9,7 @@ interface CommentAuthGuardProps {
 }
 
 /**
- * 评论功能认证守卫
+ * 简化的评论功能认证守卫
  * 用于保护评论功能，确保用户已登录才能评论
  * 不限制用户角色，任何登录用户都可以评论
  */
@@ -18,37 +17,28 @@ export default function CommentAuthGuard({
   children, 
   fallback 
 }: CommentAuthGuardProps) {
-  const { user, loading, isInitialized } = useAuthStore();
-  const initRef = useRef(false);
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const { user, loading, initializeAuth, checkTokenExpiry } = useAuthStore();
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // 初始化认证状态 - 优化版本，避免重复初始化
+  // 初始化认证状态
   useEffect(() => {
-    // 使用 ref 确保即使在严格模式下也只初始化一次
-    if (!initRef.current && !isInitialized) {
-      initRef.current = true;
-      
-      // 初始化认证状态
-      initializeAuth();
-      
-      // 设置认证监听器
-      const cleanup = initializeAuthListener();
-      
-      return () => {
-        cleanup();
-      };
-    }
-  }, [isInitialized]);
+    const initAuth = async () => {
+      await initializeAuth();
+      setIsInitialized(true);
+    };
 
-  // 标记认证检查完成
+    initAuth();
+  }, [initializeAuth]);
+
+  // 检查token是否过期
   useEffect(() => {
-    if (!loading && isInitialized) {
-      setIsAuthChecked(true);
+    if (isInitialized && !loading) {
+      checkTokenExpiry();
     }
-  }, [loading, isInitialized]);
+  }, [isInitialized, loading, checkTokenExpiry]);
 
   // 如果还在加载中，显示加载状态
-  if (!isAuthChecked) {
+  if (!isInitialized || loading) {
     return (
       <div className="flex items-center justify-center py-4">
         <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500"></div>
