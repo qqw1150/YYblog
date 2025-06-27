@@ -1,13 +1,12 @@
-'use client';
-
-import React, { useState, useEffect, use } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer';
 import { formatDateTime } from '@/utils/dateFormatter';
 import { getPostWithTags } from '@/lib/supabase/db/posts';
-import { getDefaultAvatarUrl } from '@/lib/utils/avatarUtils';
-import { ArticleDetailSkeleton } from '@/components/ui/Skeleton';
+import { DEFAULT_AVATAR_URL } from '@/lib/utils/avatarUtils';
+import { getArticleFeaturedImage } from '@/lib/utils/articleImageUtils';
+import { notFound } from 'next/navigation';
 
 // 定义文章详情页面的数据类型
 interface PostWithTags {
@@ -40,70 +39,26 @@ interface PostWithTags {
   comments_count?: number;
 }
 
-export default function BlogPostPage({ params }: { params: Promise<{ id: string }> }) {
-  // 使用 React.use() 解包 params Promise
-  const { id } = use(params);
+/**
+ * 博客文章详情页面组件
+ * 服务端组件，在服务端获取文章数据并渲染
+ */
+export default async function BlogPostPage({ params }: { params: { id: string } }) {
+  // 从 params 直接获取文章 ID
+  const { id } = params;
   
-  // 状态管理
-  const [post, setPost] = useState<PostWithTags | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 获取文章数据
-  useEffect(() => {
-    const fetchPost = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await getPostWithTags(id);
-        
-        if (error) {
-          setError(error.message);
-          return;
-        }
-        
-        if (!data) {
-          setError('未找到该文章');
-          return;
-        }
-        
-        setPost(data as PostWithTags);
-      } catch (err) {
-        console.error('获取文章失败:', err);
-        setError('获取文章失败');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPost();
-  }, [id]);
-
-  // 加载状态显示骨架屏
-  if (loading) {
-    return <ArticleDetailSkeleton />;
+  // 在服务端获取文章数据
+  const { data: post, error } = await getPostWithTags(id);
+  
+  // 如果获取失败或文章不存在，返回 404
+  if (error || !post) {
+    console.error('获取文章失败:', error);
+    notFound();
   }
-
-  // 错误处理
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-rose-600 text-xl font-bold">
-        加载文章失败：{error}
-      </div>
-    );
-  }
-
-  // 无数据处理
-  if (!post) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500 text-xl font-bold">
-        未找到该文章
-      </div>
-    );
-  }
-
+  
   // 确保作者信息有默认值
   const authorName = post.author.username || '匿名用户';
-  const authorAvatar = post.author.avatar_url || getDefaultAvatarUrl();
+  const authorAvatar = post.author.avatar_url || DEFAULT_AVATAR_URL;
 
   return (
     <div className="min-h-screen relative bg-gray-50">
@@ -150,7 +105,7 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
           
           {/* 标签 */}
           <div className="flex flex-wrap gap-2 mb-8">
-            {post.tags.map(tag => (
+            {post.tags.map((tag: { id: string; name: string }) => (
               <Link 
                 key={tag.id} 
                 href={`/blog/tag/${tag.id}`}
@@ -165,18 +120,16 @@ export default function BlogPostPage({ params }: { params: Promise<{ id: string 
       
       <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-20">
         {/* 特色图片 */}
-        {post.featured_image && (
-          <div className="mb-8 relative h-[400px] w-full rounded-xl overflow-hidden shadow-xl transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl border border-gray-300">
-            <Image 
-              src={post.featured_image} 
-              alt={post.title}
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-          </div>
-        )}
+        <div className="mb-8 relative h-[400px] w-full rounded-xl overflow-hidden shadow-xl transform transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl border border-gray-300">
+          <Image 
+            src={getArticleFeaturedImage(post.featured_image, post.category?.slug, post.id)}
+            alt={post.title}
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+        </div>
         
         {/* 文章内容 */}
         <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-xl mb-10 border border-gray-300 relative">

@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   },
   /* config options here */
   images: {
-    domains: ['images.unsplash.com','picsum.photos','www.gravatar.com','ui-avatars.com','source.unsplash.com'],
+    domains: ['hxnargfvyjnogjzgohiy.supabase.co'],
     remotePatterns: [
       {
         protocol: 'https',

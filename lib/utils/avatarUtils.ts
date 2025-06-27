@@ -3,27 +3,10 @@
  * 用于处理用户头像的默认值和生成逻辑
  */
 
-/**
- * 简单的 MD5 哈希实现（用于 Gravatar）
- * @param str 输入字符串
- * @returns MD5 哈希值
- */
-function md5(str: string): string {
-  // 这是一个简化的 MD5 实现，仅用于生成 Gravatar URL
-  // 在实际生产环境中，建议使用更安全的哈希算法
-  let hash = 0;
-  if (str.length === 0) return hash.toString();
-  
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // 转换为 32 位整数
-  }
-  
-  // 转换为 16 进制并补齐到 32 位
-  const hexHash = Math.abs(hash).toString(16);
-  return hexHash.padStart(8, '0');
-}
+// 默认头像URL常量
+export const DEFAULT_AVATAR_URL = 'https://hxnargfvyjnogjzgohiy.supabase.co/storage/v1/object/public/avatars//default_avatar.png';
+
+
 
 /**
  * 获取用户默认头像URL
@@ -31,18 +14,8 @@ function md5(str: string): string {
  * @param username 用户名
  * @returns 默认头像URL
  */
-export function getDefaultAvatarUrl(email?: string, username?: string): string {
-  if (email) {
-    // 使用 Gravatar 默认头像
-    const emailHash = md5(email.toLowerCase().trim());
-    return `https://www.gravatar.com/avatar/${emailHash}?d=mp&s=200`;
-  } else if (username) {
-    // 使用用户名生成头像
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=6366f1&color=fff&size=200`;
-  } else {
-    // 使用通用默认头像
-    return 'https://ui-avatars.com/api/?name=User&background=6366f1&color=fff&size=200';
-  }
+export function getDefaultAvatarUrl(): string {
+  return DEFAULT_AVATAR_URL;
 }
 
 /**

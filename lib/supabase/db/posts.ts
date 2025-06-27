@@ -24,7 +24,11 @@ export interface Post {
   created_at: string;
   updated_at: string;
   // 关联数据
-  categories?: Category | null; // 关联的分类信息
+  categories?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null; // 关联的分类信息
   author?: {
     id: string;
     username: string;
@@ -193,7 +197,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         .from('posts')
         .select(`
           *,
-          categories(id, name),
+          categories(id, name, slug),
           users!posts_author_id_fkey(id, username, avatar_url, email)
         `, { count: 'exact' })
         .in('id', postIds);
@@ -256,7 +260,7 @@ export async function getPosts(params: PostQueryParams = {}): Promise<PostPagina
         .from('posts')
         .select(`
           *,
-          categories(id, name),
+          categories(id, name, slug),
           users!posts_author_id_fkey(id, username, avatar_url, email)
         `, { count: 'exact' });
       
